@@ -116,6 +116,30 @@ class DDIMSampler(object):
 
         print(f'Data shape for DDIM sampling is {size}, eta {eta}')
 
+
+        """
+        
+        ddim_sampling return
+        
+            imgs, pred_x0s = outs
+            # img, img_ = imgs[0], imgs[1]
+            pred_x0, pred_x0_ = pred_x0s[0], pred_x0s[0]
+
+            if callback: callback(i)
+            if img_callback:
+                img_callback(pred_x0, i)
+                img_callback(pred_x0_, i)
+
+            if index % log_every_t == 0 or index == total_steps - 1:
+                intermediates['x_inter'].append(imgs)
+                intermediates['pred_x0'].append(pred_x0s)
+
+            return imgs, intermediates
+        
+        """
+
+
+
         samples, intermediates = self.ddim_sampling(conditioning, size,
                                                     callback=callback,
                                                     img_callback=img_callback,
@@ -184,10 +208,18 @@ class DDIMSampler(object):
 
             if mask is not None:
                 assert x0 is not None
+
+                print(x0.shape)  # why x0 is not None ???
+
                 img_orig = self.model.q_sample(x0, ts)  # TODO: deterministic forward pass?
                 img = img_orig * mask + (1. - mask) * img
+                img_ = img_orig * mask + (1. - mask) * img_
 
-                outs = self.p_sample_ddim(img, cond, ts, index=index, use_original_steps=ddim_use_original_steps,
+                imgs = [img, img_]
+
+                # outs = [x_prev, x_prev_], [pred_x0, pred_x0_]
+
+                outs = self.p_sample_ddim(imgs, cond, ts, index=index, use_original_steps=ddim_use_original_steps,
                                           quantize_denoised=quantize_denoised, temperature=temperature,
                                           noise_dropout=noise_dropout, score_corrector=score_corrector,
                                           corrector_kwargs=corrector_kwargs,
@@ -202,15 +234,20 @@ class DDIMSampler(object):
 
 
 
-            img, pred_x0 = outs
+            imgs, pred_x0s = outs
+            # img, img_ = imgs[0], imgs[1]
+            pred_x0, pred_x0_ = pred_x0s[0], pred_x0s[0]
+
             if callback: callback(i)
-            if img_callback: img_callback(pred_x0, i)
+            if img_callback:
+                img_callback(pred_x0, i)
+                img_callback(pred_x0_, i)
 
             if index % log_every_t == 0 or index == total_steps - 1:
-                intermediates['x_inter'].append(img)
-                intermediates['pred_x0'].append(pred_x0)
+                intermediates['x_inter'].append(imgs)
+                intermediates['pred_x0'].append(pred_x0s)
 
-        return img, intermediates
+        return imgs, intermediates
 
     @torch.no_grad()
     def p_sample_ddim(self, x, c, t, index, repeat_noise=False, use_original_steps=False, quantize_denoised=False,
@@ -218,6 +255,7 @@ class DDIMSampler(object):
                       unconditional_guidance_scale=1., unconditional_conditioning=None, features_adapter=None,
                       append_to_context=None, **kwargs):
         b, *_, device = *x.shape, x.device
+        # x: imgs
 
         is_double = kwargs['is_double'] if 'is_double' in kwargs.keys else None
         swap_shape = kwargs['swap_shape'] if 'swap_shape' in kwargs.keys and is_double is not None else None
@@ -227,15 +265,16 @@ class DDIMSampler(object):
 
         if unconditional_conditioning is None or unconditional_guidance_scale == 1.:
             if append_to_context is not None:
-                model_output = self.model.apply_model(x, t, torch.cat([c[0], append_to_context], dim=1),
+                model_output = self.model.apply_model(x[0], t, torch.cat([c[0], append_to_context], dim=1),
                                                       features_adapter=features_adapter)
-                model_output_ = self.model.apply_model(x, t, torch.cat([c[1], append_to_context], dim=1),
+                model_output_ = self.model.apply_model(x[1], t, torch.cat([c[1], append_to_context], dim=1),
                                                       features_adapter=features_adapter) if c[1] is not None else None
             else:
-                model_output = self.model.apply_model(x, t, c[0], features_adapter=features_adapter)
-                model_output_ = self.model.apply_model(x, t, c[1], features_adapter=features_adapter) if c[1] is not None else None
+                model_output = self.model.apply_model(x[0], t, c[0], features_adapter=features_adapter)
+                model_output_ = self.model.apply_model(x[1], t, c[1], features_adapter=features_adapter) if c[1] is not None else None
         else:
-            print('Not Yet Implemented')
+            print('Double Line Not Yet Implemented')
+            assert False, 'Double Line Not Implement Error'
             x_in = torch.cat([x] * 2)
             t_in = torch.cat([t] * 2)
             if isinstance(c, dict):
@@ -269,15 +308,17 @@ class DDIMSampler(object):
 
         if self.model.parameterization == "v":
             print('IN v')
-            e_t = self.model.predict_eps_from_z_and_v(x, t, model_output)   # the noise in next turn
-            e_t_ = self.model.predict_eps_from_z_and_v(x, t, model_output)
+            e_t = self.model.predict_eps_from_z_and_v(x[0], t, model_output)   # the noise in next turn
+            e_t_ = self.model.predict_eps_from_z_and_v(x[1], t, model_output_) if is_double else None
         else:
             print('NOT IN v')
             e_t = model_output
+            e_t_ = model_output_ if is_double else None
 
         if score_corrector is not None:
             assert self.model.parameterization == "eps", 'not implemented'
-            e_t = score_corrector.modify_score(self.model, e_t, x, t, c, **corrector_kwargs)
+            e_t = score_corrector.modify_score(self.model, e_t, x[0], t, c, **corrector_kwargs)
+            e_t_ = score_corrector.modify_score(self.model, e_t_, x[1], t, c_, **corrector_kwargs) if is_double else None
 
         alphas = self.model.alphas_cumprod if use_original_steps else self.ddim_alphas
         alphas_prev = self.model.alphas_cumprod_prev if use_original_steps else self.ddim_alphas_prev
@@ -291,19 +332,37 @@ class DDIMSampler(object):
 
         # current prediction for x_0
         if self.model.parameterization != "v":
-            pred_x0 = (x - sqrt_one_minus_at * e_t) / a_t.sqrt()
+            pred_x0 = (x[0] - sqrt_one_minus_at * e_t) / a_t.sqrt()
+            pred_x0_ = (x[1] - sqrt_one_minus_at * e_t_) / a_t.sqrt() if is_doouble else None
         else:
-            pred_x0 = self.model.predict_start_from_z_and_v(x, t, model_output)
+            pred_x0 = self.model.predict_start_from_z_and_v(x[0], t, model_output)
+            pred_x0_ = self.model.predict_start_from_z_and_v(x[1], t, model_output_) if is_doouble else None
 
         if quantize_denoised:
             pred_x0, _, *_ = self.model.first_stage_model.quantize(pred_x0)
+            pred_x0_, _, *_ = self.model.first_stage_model.quantize(pred_x0_)
+
         # direction pointing to x_t
         dir_xt = (1. - a_prev - sigma_t ** 2).sqrt() * e_t
-        noise = sigma_t * noise_like(x.shape, device, repeat_noise) * temperature
+        noise = sigma_t * noise_like(x[0].shape, device, repeat_noise) * temperature
+
+        dir_xt_ = (1. - a_prev - sigma_t ** 2).sqrt() * e_t_
+        noise_ = sigma_t * noise_like(x[1].shape, device, repeat_noise) * temperature
+
         if noise_dropout > 0.:
             noise = torch.nn.functional.dropout(noise, p=noise_dropout)
+            noise_ = torch.nn.functional.dropout(noise_, p=noise_dropout)
+
+        if t < endStep:
+            pred_x0, pred_x0_ = SWAP_latent_img([pred_x0, pred_x0_], swap_shape)
+        # TODO: swap tensors between two lines
+
         x_prev = a_prev.sqrt() * pred_x0 + dir_xt + noise
-        return x_prev, pred_x0
+        x_prev_ = a_prev.sqrt() * pred_x0_ + dir_xt_ + noise_
+
+
+
+        return [x_prev, x_prev_], [pred_x0, pred_x0_]
 
     @torch.no_grad()
     def stochastic_encode(self, x0, t, use_original_steps=False, noise=None):
@@ -341,3 +400,29 @@ class DDIMSampler(object):
                                           unconditional_guidance_scale=unconditional_guidance_scale,
                                           unconditional_conditioning=unconditional_conditioning)
         return x_dec
+
+def SWAP_latent_img(x, swap_shape, start=1/4, throughout_channel=True):
+    # start form 1/4 length of the width
+    assert len(swap_shape)==2, 'shape exception'
+    H, W = swap_shape
+    # swap_shape: H, W
+    if isinstance(x, list):
+        assert len(x)==2, 'list length exception'
+        assert x[1] is not None, 'element exception'
+        a, b = x[0], x[1]
+        start_point_H, start_point_W = (int)(H*start), (int)(W*start)
+        end_point_H, end_point_W = start_point_H + H + 1, start_point_W + W + 1
+        if throughout_channel:
+            temp = a[:, start_point_H:end_point_H, start_point_W:end_point_W]
+            a[:, start_point_H:end_point_H, start_point_W:end_point_W] \
+                = b[:, start_point_H:end_point_H, start_point_W:end_point_W]
+            b[:, start_point_H:end_point_H, start_point_W:end_point_W] = temp
+        else:
+            temp = a[0][start_point_H:end_point_H, start_point_W:end_point_W]
+            a[0][start_point_H:end_point_H, start_point_W:end_point_W] \
+                = b[0][start_point_H:end_point_H, start_point_W:end_point_W]
+            b[0][start_point_H:end_point_H, start_point_W:end_point_W] = temp
+    else:
+        raise RuntimeError('Unable to swap for lack of swap target')
+
+        return [a,b]

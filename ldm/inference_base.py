@@ -293,6 +293,12 @@ def diffusion_inference(opt, model, sampler, adapter_features, append_to_context
         opt.H = 512
         opt.W = 512
     shape = [opt.C, opt.H // opt.f, opt.W // opt.f]
+
+    """
+    ddim_sampler return:
+        samples, intermediates
+    """
+
     latents_samples, _ = sampler.sample(
         S=opt.steps,
         conditioning=[c, c_],
@@ -318,6 +324,8 @@ def diffusion_inference(opt, model, sampler, adapter_features, append_to_context
             x__ = model.decode_first_stage(samples_latents)
             x__ = torch.clamp((x__ + 1.0) / 2.0, min=0.0, max=1.0)
             x_samples.append(x__)
+        else:
+            raise NotImplementedError('Wrongly Implemented in Double Line')
 
     assert opt.double and len(x_samples)==2 or not opt.double and len(x_samples)==1, 'not match!'
 
