@@ -11,6 +11,16 @@ from ldm.util import fix_cond_shapes, load_model_from_config, read_state_dict
 DEFAULT_NEGATIVE_PROMPT = 'longbody, lowres, bad anatomy, bad hands, missing fingers, extra digit, ' \
                           'fewer digits, cropped, worst quality, low quality'
 
+def str2bool(v: str) -> bool:
+    if isinstance(v, bool):
+        return v
+    if v.lower() in ("yes", "true", "t", "y", "1"):
+        return True
+    elif v.lower() in ("no", "false", "f", "n", "0"):
+        return False
+    else:
+        raise argparse.ArgumentTypeError("Boolean value expected.")
+
 
 def get_base_argument_parser() -> argparse.ArgumentParser:
     """get the base argument parser for inference scripts"""

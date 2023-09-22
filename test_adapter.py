@@ -6,7 +6,7 @@ from basicsr.utils import tensor2img
 from pytorch_lightning import seed_everything
 from torch import autocast
 
-from ldm.inference_base import (diffusion_inference, get_adapters, get_base_argument_parser, get_sd_models)
+from ldm.inference_base import (diffusion_inference, get_adapters, get_base_argument_parser, get_sd_models, str2bool)
 from ldm.modules.extra_condition import api
 from ldm.modules.extra_condition.api import (ExtraCondition, get_adapter_feature, get_cond_model)
 
@@ -20,15 +20,35 @@ def main():
         '--which_cond',
         type=str,
         required=True,
+        default="None",
         choices=supported_cond,
         help='which condition modality you want to test',
     )
     parser.add_argument(
-        '--fac',
-        type=int,
-        default=1,
-        help='extand imput image size',
+        '--keep',
+        type=str2bool,
+        default=True,
+        help='whether to keep swapping tensors in latent space',
     )
+    parser.add_argument(
+        '--swapW',
+        type=int,
+        default=128,
+        help='less than W'
+    )
+    parser.add_argument(
+        '--swapH',
+        type=int,
+        default=128,
+        help='less than H'
+    )
+    parser.add_argument(
+        '--endStep',
+        type=int,
+        default=25,
+        help='when to end up swapping tensors in latent space'
+    )
+
     
     
     opt = parser.parse_args()
