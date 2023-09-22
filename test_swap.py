@@ -90,13 +90,13 @@ def main():
                 image_paths.append(line.split('; ')[0])
                 prompts.append(line.split('; ')[1])
     else:
-        image_paths = [opt.cond_path] if opt.cond_path is not None else [None]
+        image_paths = [opt.cond_path] if opt.cond_path != None else [None]
         prompts = [opt.prompt]
     print(image_paths)
 
     # prepare models
     sd_model, sampler = get_sd_models(opt)
-    if opt.which_cond is not "None":
+    if opt.which_cond != "None":
         adapter = get_adapters(opt, getattr(ExtraCondition, which_cond))
     cond_model = None
     if opt.cond_inp_type == 'image':
@@ -112,13 +112,13 @@ def main():
             seed_everything(opt.seed)
             for v_idx in range(opt.n_samples):
                 # seed_everything(opt.seed+v_idx+test_idx)
-                cond = process_cond_module(opt, cond_path, opt.cond_inp_type, cond_model) if cond_path is not None else None
+                cond = process_cond_module(opt, cond_path, opt.cond_inp_type, cond_model) if cond_path != None else None
 
                 base_count = len(os.listdir(opt.outdir)) // 2
-                if cond is not None:
+                if cond != None:
                     cv2.imwrite(os.path.join(opt.outdir, f'{base_count:05}_{which_cond}.png'), tensor2img(cond))
 
-                if opt.which_cond is not "None" and cond is not None:
+                if opt.which_cond != "None" and cond != None:
                     adapter_features, append_to_context = get_adapter_feature(cond, adapter)
                 else:
                     adapter_features, append_to_context = None, None

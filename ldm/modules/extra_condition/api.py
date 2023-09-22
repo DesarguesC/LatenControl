@@ -9,47 +9,47 @@ from torch import autocast
 import numpy as np
 
 from tqdm.auto import tqdm
-from point_e.diffusion.configs import DIFFUSION_CONFIGS, diffusion_from_config
-from point_e.diffusion.sampler import PointCloudSampler
-from point_e.models.download import load_checkpoint
-from point_e.models.configs import MODEL_CONFIGS, model_from_config
-from point_e.util.plotting import plot_point_cloud
+# from point_e.diffusion.configs import DIFFUSION_CONFIGS, diffusion_from_config
+# from point_e.diffusion.sampler import PointCloudSampler
+# from point_e.models.download import load_checkpoint
+# from point_e.models.configs import MODEL_CONFIGS, model_from_config
+# from point_e.util.plotting import plot_point_cloud
 
 
-def get_point_sampler(opt):
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+# def get_point_sampler(opt):
+#     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-    print('creating base model...')
-    base_name = 'base40M'  # use base300M or base1B for better results
-    base_model = model_from_config(MODEL_CONFIGS[base_name], device)
-    base_model.eval()
-    base_diffusion = diffusion_from_config(DIFFUSION_CONFIGS[base_name])
+#     print('creating base model...')
+#     base_name = 'base40M'  # use base300M or base1B for better results
+#     base_model = model_from_config(MODEL_CONFIGS[base_name], device)
+#     base_model.eval()
+#     base_diffusion = diffusion_from_config(DIFFUSION_CONFIGS[base_name])
 
-    print('creating upsample model...')
-    upsampler_model = model_from_config(MODEL_CONFIGS['upsample'], device)
-    upsampler_model.eval()
-    upsampler_diffusion = diffusion_from_config(DIFFUSION_CONFIGS['upsample'])
+#     print('creating upsample model...')
+#     upsampler_model = model_from_config(MODEL_CONFIGS['upsample'], device)
+#     upsampler_model.eval()
+#     upsampler_diffusion = diffusion_from_config(DIFFUSION_CONFIGS['upsample'])
 
-    print('downloading base checkpoint...')
-    base_model.load_state_dict(load_checkpoint(base_name, device))
+#     print('downloading base checkpoint...')
+#     base_model.load_state_dict(load_checkpoint(base_name, device))
 
-    print('downloading upsampler checkpoint...')
-    upsampler_model.load_state_dict(load_checkpoint('upsample', device))
-
-
-
-    sampler = PointCloudSampler(
-        device=device,
-        models=[base_model, upsampler_model],
-        diffusions=[base_diffusion, upsampler_diffusion],
-        num_points=[1024, 4096 - (int)(1024 * (opt.cond_weight-1))],
-        aux_channels=['R', 'G', 'B'],
-        guidance_scale=[3.0, 3.0],
-    )
-
-    return sampler
+#     print('downloading upsampler checkpoint...')
+#     upsampler_model.load_state_dict(load_checkpoint('upsample', device))
 
 
+
+#     sampler = PointCloudSampler(
+#         device=device,
+#         models=[base_model, upsampler_model],
+#         diffusions=[base_diffusion, upsampler_diffusion],
+#         num_points=[1024, 4096 - (int)(1024 * (opt.cond_weight-1))],
+#         aux_channels=['R', 'G', 'B'],
+#         guidance_scale=[3.0, 3.0],
+#     )
+
+#     return sampler
+
+# ↑ point-e for 3d generation in previous version
 
 @unique
 class ExtraCondition(Enum):
