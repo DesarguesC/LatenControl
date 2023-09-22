@@ -1,5 +1,7 @@
 # ignored folders
 tmp/*
+logrus/*
+
 # /Datasets/*
 # Datasets/vit-gpt2-image-captioning/*
 #/Datasets/Data/*
