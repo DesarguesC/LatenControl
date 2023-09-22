@@ -29,7 +29,6 @@ def main():
     parser.add_argument(
         '--which_cond',
         type=str,
-        required=True,
         default="None",
         choices=supported_cond,
         help='which condition modality you want to test',
@@ -61,7 +60,7 @@ def main():
         help='when to end up swapping tensors in latent space'
     )
     parser.add_argument(
-        '--double',
+        '--is_double',
         type=str2bool,
         default=True,
         help='use two stable-diffusion base line two enable the swap method'
@@ -99,10 +98,10 @@ def main():
     if opt.which_cond != "None":
         adapter = get_adapters(opt, getattr(ExtraCondition, which_cond))
     cond_model = None
-    if opt.cond_inp_type == 'image':
+    if opt.cond_inp_type == 'image' and opt.which_cond != "None":
         cond_model = get_cond_model(opt, getattr(ExtraCondition, which_cond))
-
-    process_cond_module = getattr(api, f'get_cond_{which_cond}')
+    if opt.which_cond != "None":
+        process_cond_module = getattr(api, f'get_cond_{which_cond}')
 
     # inference
     with torch.inference_mode(), \

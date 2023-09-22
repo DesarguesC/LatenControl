@@ -287,7 +287,7 @@ def diffusion_inference(opt, model, sampler, adapter_features, append_to_context
     c, uc = fix_cond_shapes(model, c, uc)
     if opt.is_double:
         c_, _ = fix_cond_shapes(model, c_, uc)
-    if opt.double:
+    if opt.is_double:
         print('first line...')
     if not hasattr(opt, 'H'):
         opt.H = 512
@@ -313,7 +313,7 @@ def diffusion_inference(opt, model, sampler, adapter_features, append_to_context
         cond_tau=opt.cond_tau,
         style_cond_tau=opt.style_cond_tau,
 
-        is_double=opt.double,
+        is_double=opt.is_double,
         swap_shape=(opt.swapH, opt.swapW),
         endStep=opt.endStep
     )
@@ -327,6 +327,6 @@ def diffusion_inference(opt, model, sampler, adapter_features, append_to_context
         else:
             raise NotImplementedError('Wrongly Implemented in Double Line')
 
-    assert opt.double and len(x_samples)==2 or not opt.double and len(x_samples)==1, 'not match!'
+    assert opt.is_double and len(x_samples)==2 or not opt.is_double and len(x_samples)==1, 'not match!'
 
     return x_samples

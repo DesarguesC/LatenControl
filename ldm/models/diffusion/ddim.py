@@ -82,15 +82,15 @@ class DDIMSampler(object):
                **kwargs
                ):
 
-        is_double = kwargs['is_double'] if 'is_double' in kwargs.keys else None
-        swap_shape = kwargs['swap_shape'] if 'swap_shape' in kwargs.keys and is_double is not None else None
-        endStep = kwargs['endStep'] if 'endStep' in kwargs.keys and is_double is not None else None
+        is_double = kwargs['is_double'] if 'is_double' in kwargs.keys() else None
+        swap_shape = kwargs['swap_shape'] if 'swap_shape' in kwargs.keys() and is_double != None else None
+        endStep = kwargs['endStep'] if 'endStep' in kwargs.keys() and is_double != None else None
         if is_double is not None and is_double:
-            assert conditioning[1] is not None, 'conditioning contains None while doubling line'
+            assert conditioning[1] != None, 'conditioning contains None while doubling line'
         elif is_double is None:
             assert conditioning[0] is None, 'conditioning contains tow valid elements while not doubling'
 
-        if conditioning is not None:
+        if conditioning != None:
             if isinstance(conditioning[0], dict):
                 cbs = conditioning[list(conditioning[0].keys())[0]].shape[0]
                 if cbs != batch_size:
@@ -112,7 +112,7 @@ class DDIMSampler(object):
         # sampling
         C, H, W = shape
         size = (batch_size, C, H, W)
-        endStep = (C, endStep[0], endStep[1]) if endStep is not None else None
+        swap_shape = (C, swap_shape[0], swap_shape[1]) if is_double != None else None
 
         print(f'Data shape for DDIM sampling is {size}, eta {eta}')
 
@@ -181,9 +181,9 @@ class DDIMSampler(object):
             img = x_T
             img_ = x_T
 
-        is_double = kwargs['is_double'] if 'is_double' in kwargs.keys else None
-        swap_shape = kwargs['swap_shape'] if 'swap_shape' in kwargs.keys and is_double is not None else None
-        endStep = kwargs['endStep'] if 'endStep' in kwargs.keys and is_double is not None else None
+        is_double = kwargs['is_double'] if 'is_double' in kwargs.keys() else None
+        swap_shape = kwargs['swap_shape'] if 'swap_shape' in kwargs.keys() and is_double is not None else None
+        endStep = kwargs['endStep'] if 'endStep' in kwargs.keys() and is_double is not None else None
 
         if timesteps is None:
             timesteps = self.ddpm_num_timesteps if ddim_use_original_steps else self.ddim_timesteps
@@ -233,7 +233,7 @@ class DDIMSampler(object):
                                           )
 
 
-
+            # mask = None, x0 = None ???
             imgs, pred_x0s = outs
             # img, img_ = imgs[0], imgs[1]
             pred_x0, pred_x0_ = pred_x0s[0], pred_x0s[0]
@@ -257,9 +257,9 @@ class DDIMSampler(object):
         b, *_, device = *x.shape, x.device
         # x: imgs
 
-        is_double = kwargs['is_double'] if 'is_double' in kwargs.keys else None
-        swap_shape = kwargs['swap_shape'] if 'swap_shape' in kwargs.keys and is_double is not None else None
-        endStep = kwargs['endStep'] if 'endStep' in kwargs.keys and is_double is not None else None
+        is_double = kwargs['is_double'] if 'is_double' in kwargs.keys() else None
+        swap_shape = kwargs['swap_shape'] if 'swap_shape' in kwargs.keys() and is_double is not None else None
+        endStep = kwargs['endStep'] if 'endStep' in kwargs.keys() and is_double is not None else None
 
 
 
