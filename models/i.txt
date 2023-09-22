@@ -1,0 +1,2 @@
+You can put all of your model weights here,where is covered by .gitignore file.
+Anyway, you can create soft link to get your small files linked to data disk.
