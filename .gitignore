@@ -3,7 +3,7 @@ tmp/*
 # /Datasets/*
 # Datasets/vit-gpt2-image-captioning/*
 #/Datasets/Data/*
-models/*
+
 nlpconnect/vit-gpt2-image-captioning/
 experiments/*
 
