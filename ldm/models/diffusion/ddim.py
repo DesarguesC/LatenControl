@@ -215,11 +215,11 @@ class DDIMSampler(object):
                 img = img_orig * mask + (1. - mask) * img
                 img_ = img_orig * mask + (1. - mask) * img_
 
-                imgs = [img, img_]
+            imgs = [img, img_]
 
                 # outs = [x_prev, x_prev_], [pred_x0, pred_x0_]
 
-                outs = self.p_sample_ddim(imgs, cond, ts, index=index, use_original_steps=ddim_use_original_steps,
+            outs = self.p_sample_ddim(imgs, cond, ts, index=index, use_original_steps=ddim_use_original_steps,
                                           quantize_denoised=quantize_denoised, temperature=temperature,
                                           noise_dropout=noise_dropout, score_corrector=score_corrector,
                                           corrector_kwargs=corrector_kwargs,
@@ -254,8 +254,10 @@ class DDIMSampler(object):
                       temperature=1., noise_dropout=0., score_corrector=None, corrector_kwargs=None,
                       unconditional_guidance_scale=1., unconditional_conditioning=None, features_adapter=None,
                       append_to_context=None, **kwargs):
-        b, *_, device = *x.shape, x.device
+        b, *_, device = (*x.shape, x.device) if not isinstance(x, list) else (*x[0].shape, x[0].device)
         # x: imgs
+        if isinstance(x, list):
+            assert x[0].shape == x[1].shape, 'error occurred before swapping'
 
         is_double = kwargs['is_double'] if 'is_double' in kwargs.keys() else None
         swap_shape = kwargs['swap_shape'] if 'swap_shape' in kwargs.keys() and is_double is not None else None
