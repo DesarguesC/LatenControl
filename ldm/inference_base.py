@@ -323,6 +323,7 @@ def diffusion_inference(opt, model, sampler, adapter_features, append_to_context
         if samples_latents is not None:
             x__ = model.decode_first_stage(samples_latents)
             x__ = torch.clamp((x__ + 1.0) / 2.0, min=0.0, max=1.0)
+            x__ = torch.tensor(x__, dtype=torch.float32)
             x_samples.append(x__)
         else:
             raise NotImplementedError('Wrongly Implemented in Double Line')

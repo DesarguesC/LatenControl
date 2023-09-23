@@ -100,7 +100,7 @@ class DDIMSampler(object):
                 if cbs != batch_size:
                     print(f"Warning: Got {cbs} conditionings but batch-size is {batch_size}")
             elif not is_double:
-                if conditioning.shape[0] != batch_size:
+                if conditioning[0].shape[0] != batch_size:
                     print(f"Warning: Got {conditioning.shape[0]} conditionings but batch-size is {batch_size}")
             elif is_double:
                 if conditioning[0].shape[0] != batch_size:
@@ -218,7 +218,7 @@ class DDIMSampler(object):
             imgs = [img, img_]
 
                 # outs = [x_prev, x_prev_], [pred_x0, pred_x0_]
-            assert isinstance(type(cond), type(imgs)), f'type not match error with: type(cond) = {type(cond)}, type(imgs) = {type(cond)}'
+            assert isinstance(cond, list) and isinstance(imgs, list), f'type not match error with: type(cond) = {type(cond)}, type(imgs) = {type(cond)}'
             outs = self.p_sample_ddim(imgs, cond, ts, index=index, use_original_steps=ddim_use_original_steps,
                                           quantize_denoised=quantize_denoised, temperature=temperature,
                                           noise_dropout=noise_dropout, score_corrector=score_corrector,
@@ -380,11 +380,11 @@ class DDIMSampler(object):
                 model_output_ = model_uncond_ + unconditional_guidance_scale * (model_t_ - model_uncond_)
 
         if self.model.parameterization == "v":
-            print('IN v')
+            # print('IN v')
             e_t = self.model.predict_eps_from_z_and_v(x[0], t, model_output)   # the noise in next turn
             e_t_ = self.model.predict_eps_from_z_and_v(x[1], t, model_output_) if is_double else None
         else:
-            print('NOT IN v')
+            # print('NOT IN v')
             e_t = model_output
             e_t_ = model_output_ if is_double else None
 
@@ -406,10 +406,10 @@ class DDIMSampler(object):
         # current prediction for x_0
         if self.model.parameterization != "v":
             pred_x0 = (x[0] - sqrt_one_minus_at * e_t) / a_t.sqrt()
-            pred_x0_ = (x[1] - sqrt_one_minus_at * e_t_) / a_t.sqrt() if is_doouble else None
+            pred_x0_ = (x[1] - sqrt_one_minus_at * e_t_) / a_t.sqrt() if is_double else None
         else:
             pred_x0 = self.model.predict_start_from_z_and_v(x[0], t, model_output)
-            pred_x0_ = self.model.predict_start_from_z_and_v(x[1], t, model_output_) if is_doouble else None
+            pred_x0_ = self.model.predict_start_from_z_and_v(x[1], t, model_output_) if is_double else None
 
         if quantize_denoised:
             pred_x0, _, *_ = self.model.first_stage_model.quantize(pred_x0)
@@ -427,7 +427,11 @@ class DDIMSampler(object):
             noise_ = torch.nn.functional.dropout(noise_, p=noise_dropout)
 
         if t < endStep:
-            pred_x0, pred_x0_ = SWAP_latent_img([pred_x0, pred_x0_], swap_shape)
+            
+            print(f'\nstep into {t} time step\n', end='')
+            
+            # print([pred_x0, pred_x0_])
+            pred_x0, pred_x0_ = SWAP_latent_img(pred_x0, pred_x0_, swap_shape)
         # TODO: swap tensors between two lines
 
         x_prev = a_prev.sqrt() * pred_x0 + dir_xt + noise
@@ -474,28 +478,43 @@ class DDIMSampler(object):
                                           unconditional_conditioning=unconditional_conditioning)
         return x_dec
 
-def SWAP_latent_img(x, swap_shape, start=1/4, throughout_channel=True):
+def SWAP_latent_img(la1, la2, swap_shape, start=1/4, throughout_channel=True, trans=False, replace=[False, True]):
+    # ought to keep throughout_channel=True
+    # swap=False => do the replacement
+    
+    
     # start form 1/4 length of the width
-    assert len(swap_shape)==2, 'shape exception'
-    H, W = swap_shape
+    # assert len(swap_shape)==2, 'shape exception'
+    if len(swap_shape) == 2:
+        H, W = swap_shape
+    elif len(swap_shape) == 3:
+        _, H, W = swap_shape
     # swap_shape: H, W
-    if isinstance(x, list):
-        assert len(x)==2, 'list length exception'
-        assert x[1] is not None, 'element exception'
-        a, b = x[0], x[1]
-        start_point_H, start_point_W = (int)(H*start), (int)(W*start)
-        end_point_H, end_point_W = start_point_H + H + 1, start_point_W + W + 1
-        if throughout_channel:
-            temp = a[:, start_point_H:end_point_H, start_point_W:end_point_W]
-            a[:, start_point_H:end_point_H, start_point_W:end_point_W] \
-                = b[:, start_point_H:end_point_H, start_point_W:end_point_W]
-            b[:, start_point_H:end_point_H, start_point_W:end_point_W] = temp
-        else:
-            temp = a[0][start_point_H:end_point_H, start_point_W:end_point_W]
-            a[0][start_point_H:end_point_H, start_point_W:end_point_W] \
-                = b[0][start_point_H:end_point_H, start_point_W:end_point_W]
-            b[0][start_point_H:end_point_H, start_point_W:end_point_W] = temp
+    
+    # assert len(x)==2, 'list length exception'
+    assert la1 != None and la2 != None, 'element exception'
+    a, b = la1, la2
+    start_point_H, start_point_W = (int)(H*start), (int)(W*start)
+    end_point_H, end_point_W = start_point_H + H + 1, start_point_W + W + 1
+    if throughout_channel and not replace[0]:
+        temp = a[0, :, start_point_H:end_point_H, start_point_W:end_point_W]
+        a[0, :, start_point_H:end_point_H, start_point_W:end_point_W] \
+            = b[0, :, start_point_H:end_point_H, start_point_W:end_point_W].T if trans else b[0, :, start_point_H:end_point_H, start_point_W:end_point_W]
+        b[0, :, start_point_H:end_point_H, start_point_W:end_point_W] = temp.T if trans else temp
     else:
-        raise RuntimeError('Unable to swap for lack of swap target')
+        temp = a[0, 0, start_point_H:end_point_H, start_point_W:end_point_W]
+        a[0, 0, start_point_H:end_point_H, start_point_W:end_point_W] \
+            = b[0, 0, start_point_H:end_point_H, start_point_W:end_point_W]
+        b[0, 0, start_point_H:end_point_H, start_point_W:end_point_W] = temp
 
-        return [a,b]
+    if throughout_channel and replace[0]:
+        # True => a->b
+        # False => b->a
+        if replace[1]:
+            b[0, :, start_point_H:end_point_H, start_point_W:end_point_W] = a[0, :, start_point_H:end_point_H, start_point_W:end_point_W]
+        else:
+            a[0, :, start_point_H:end_point_H, start_point_W:end_point_W] = b[0, :, start_point_H:end_point_H, start_point_W:end_point_W]
+
+
+
+    return (a, b)
