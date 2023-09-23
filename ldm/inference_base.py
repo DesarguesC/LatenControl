@@ -319,6 +319,7 @@ def diffusion_inference(opt, model, sampler, adapter_features, append_to_context
     )
 
     x_samples = []
+    print(f'length = {len(latents_samples)}')
     for samples_latents in latents_samples:
         if samples_latents is not None:
             x__ = model.decode_first_stage(samples_latents)

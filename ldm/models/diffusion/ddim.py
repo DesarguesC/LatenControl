@@ -85,6 +85,7 @@ class DDIMSampler(object):
         is_double = kwargs['is_double'] if 'is_double' in kwargs.keys() else None
         swap_shape = kwargs['swap_shape'] if 'swap_shape' in kwargs.keys() and is_double != None else None
         endStep = kwargs['endStep'] if 'endStep' in kwargs.keys() and is_double != None else None
+        
         if is_double is not None and is_double:
             assert conditioning[1] != None, 'conditioning contains None while doubling line'
         elif is_double is None:
@@ -137,8 +138,6 @@ class DDIMSampler(object):
             return imgs, intermediates
         
         """
-
-
 
         samples, intermediates = self.ddim_sampling(conditioning, size,
                                                     callback=callback,
@@ -208,9 +207,6 @@ class DDIMSampler(object):
 
             if mask is not None:
                 assert x0 is not None
-
-                print(x0.shape)  # why x0 is not None ???
-
                 img_orig = self.model.q_sample(x0, ts)  # TODO: deterministic forward pass?
                 img = img_orig * mask + (1. - mask) * img
                 img_ = img_orig * mask + (1. - mask) * img_
@@ -232,11 +228,9 @@ class DDIMSampler(object):
                                           is_double=is_double, swap_shape=swap_shape, endStep=endStep   # swap method
                                           )
 
-
-            # mask = None, x0 = None ???
             imgs, pred_x0s = outs
-            # img, img_ = imgs[0], imgs[1]
-            pred_x0, pred_x0_ = pred_x0s[0], pred_x0s[0]
+            pred_x0, pred_x0_ = pred_x0s[0], pred_x0s[1]
+            
 
             if callback: callback(i)
             if img_callback:
@@ -390,8 +384,8 @@ class DDIMSampler(object):
 
         if score_corrector is not None:
             assert self.model.parameterization == "eps", 'not implemented'
-            e_t = score_corrector.modify_score(self.model, e_t, x[0], t, c, **corrector_kwargs)
-            e_t_ = score_corrector.modify_score(self.model, e_t_, x[1], t, c_, **corrector_kwargs) if is_double else None
+            e_t = score_corrector.modify_score(self.model, e_t, x[0], t, c[0], **corrector_kwargs)
+            e_t_ = score_corrector.modify_score(self.model, e_t_, x[1], t, c[1], **corrector_kwargs) if is_double else None
 
         alphas = self.model.alphas_cumprod if use_original_steps else self.ddim_alphas
         alphas_prev = self.model.alphas_cumprod_prev if use_original_steps else self.ddim_alphas_prev
@@ -426,6 +420,10 @@ class DDIMSampler(object):
             noise = torch.nn.functional.dropout(noise, p=noise_dropout)
             noise_ = torch.nn.functional.dropout(noise_, p=noise_dropout)
 
+        
+        x_prev = a_prev.sqrt() * pred_x0 + dir_xt + noise
+        x_prev_ = a_prev.sqrt() * pred_x0_ + dir_xt_ + noise_
+
         if t < endStep:
             
             print(f'\nstep into {t} time step\n', end='')
@@ -433,10 +431,6 @@ class DDIMSampler(object):
             # print([pred_x0, pred_x0_])
             pred_x0, pred_x0_ = SWAP_latent_img(pred_x0, pred_x0_, swap_shape)
         # TODO: swap tensors between two lines
-
-        x_prev = a_prev.sqrt() * pred_x0 + dir_xt + noise
-        x_prev_ = a_prev.sqrt() * pred_x0_ + dir_xt_ + noise_
-
 
 
         return [x_prev, x_prev_], [pred_x0, pred_x0_]
@@ -481,7 +475,7 @@ class DDIMSampler(object):
 def SWAP_latent_img(la1, la2, swap_shape, start=1/4, throughout_channel=True, trans=False, replace=[False, True]):
     # ought to keep throughout_channel=True
     # swap=False => do the replacement
-    
+    return la1, la2
     
     # start form 1/4 length of the width
     # assert len(swap_shape)==2, 'shape exception'
